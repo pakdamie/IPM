@@ -1,0 +1,66 @@
+
+###This is a function that allows me to 
+###calculate the number of sprays needed
+###for the spray
+
+ss_shape_spray_no <- function(shape1, decay1,AT,initial1){
+  
+  parm_m0= c(n=shape1, #shape parameter,
+             dev =1/30, #development rate,
+             mu = 0.33, #natural mortality rate
+             m1=8,
+             m2=0.5, 
+             mk=5, 
+             a = decay1 )#decay rate of the pesticde)  
+  
+  #run it for 200 days
+  times  <- seq(0, 200, 1/10)
+  
+  xint <-  c(S1 = c(initial1,  rep(0, shape1 - 1)), S2 = 0, P=0)
+  
+  ###This is the function that figures out when the abundance
+  ###reaches the action threshold-(the root)
+  rootFun_Spray_D <- function (t, y, parms) {
+    
+    n <- parms['n'] #need the shape parameter
+    
+    threshold <- AT
+    
+    yroot<-vector(len=1) #a weird gimmick
+    
+    yroot[1] <- y[n+1] - threshold
+    
+    return(yroot)
+  }
+  # and what to do when you hit the root
+  # add events = list(func=eventfun, root = TRUE) to lsodar
+  eventfun_D<- function(t,y,parms) {
+    n <- parms['n']
+    
+    y[n+1] <- y[n+1] - 1e-10# to make sure there's no doubling of threshold crossing -- sloppy hack
+    
+    y[n+2] <- y[n+2] +1
+    
+    return(y)
+  }
+  
+   ###This runs the desolve WITH root and event
+   output0 <- lsodar(
+             y = xint ,
+            times= seq(0,200,1/10),
+            func = ErlangInsect_Spray,
+            parms = parm_m0,
+            rootfun=rootFun_Spray_D,
+            rtol = 1e-4,
+            atol = 1e-6,
+            events = list(func=eventfun_D, 
+                          root = TRUE))
+  
+   
+   
+   
+   
+  
+  days_of_sprays <- length(attributes(output0)$troot)
+  return(days_of_sprays)
+}
